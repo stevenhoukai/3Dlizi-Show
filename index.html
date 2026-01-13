@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 交互粒子系统</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MediaPipe 依赖 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <!-- 用于摄像头输入的隐藏视频元素 -->
+    <video id="input-video" style="display: none;"></video>
+
+    <!-- Three.js 渲染容器 -->
+    <div id="canvas-container"></div>
+
+    <!-- UI 面板 -->
+    <div id="ui-panel">
+        <div class="panel-header">
+            <h3>粒子控制器</h3>
+            <div class="status-indicator" id="camera-status">📷 摄像头初始化中...</div>
+        </div>
+
+        <div class="control-group">
+            <label for="shape-select">粒子形状</label>
+            <select id="shape-select">
+                <option value="heart">❤️ 心形</option>
+                <option value="flower">🌸 花朵</option>
+                <option value="saturn">🪐 土星</option>
+                <option value="buddha">🧘 佛像(抽象)</option>
+                <option value="fireworks">🎆 烟花</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="color-picker">粒子颜色</label>
+            <input type="color" id="color-picker" value="#00ffff">
+        </div>
+
+        <div class="info-text">
+            <p>👋 <b>手势控制:</b> 张开手掌扩散，握拳收缩</p>
+            <p>🖱️ <b>鼠标控制:</b> 滚轮调节缩放</p>
+        </div>
+    </div>
+
+    <!-- 调试视图：显示摄像头识别结果 (可选，默认缩小放在角落) -->
+    <canvas id="output-canvas" width="320" height="240"></canvas>
+
+    <script type="module" src="script.js"></script>
+</body>
+
+</html>
