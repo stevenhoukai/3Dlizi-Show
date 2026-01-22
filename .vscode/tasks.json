@@ -1,0 +1,31 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "append_styles",
+			"type": "shell",
+			"command": "echo",
+			"args": [
+				".lottery-winner {\n    font-size: 32px !important;\n    color: #ffcc00 !important;\n    border-bottom: 4px solid #ffcc00 !important;\n    text-shadow: 0 0 10px #ffcc00, 0 0 30px #ff0000 !important;\n    z-index: 1000;\n    animation: winnerPulse 1s infinite alternate;\n}\n\n@keyframes winnerPulse {\n    from { transform: scale(1); }\n    to { transform: scale(1.2); }\n}",
+				">>",
+				"style.css"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "none"
+		},
+		{
+			"label": "append_styles_gesture",
+			"type": "shell",
+			"command": "echo",
+			"args": [
+				"#gesture-toggle-btn {\n    position: absolute;\n    top: 25px;\n    right: 220px; /* Left of BGM button (80 + 120 + 20) */\n    color: rgba(0, 255, 255, 0.7);\n    font-family: 'Share Tech Mono', monospace;\n    font-size: 14px;\n    letter-spacing: 2px;\n    border: 1px solid rgba(0, 255, 255, 0.3);\n    padding: 8px 16px;\n    cursor: pointer;\n    background: linear-gradient(-90deg, transparent 0%, rgba(0, 255, 255, 0.05) 100%);\n    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));\n    transition: all 0.3s ease;\n    z-index: 10003;\n    user-select: none;\n    pointer-events: auto;\n    overflow: hidden;\n    min-width: 120px;\n    text-align: center;\n}\n\n#gesture-toggle-btn.off {\n    color: rgba(255, 100, 100, 0.7);\n    border-color: rgba(255, 50, 50, 0.3);\n}\n\n#gesture-toggle-btn::before {\n    content: '';\n    position: absolute;\n    top: 0;\n    left: -100%;\n    width: 100%;\n    height: 100%;\n    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);\n    transition: left 0.5s ease;\n}\n\n#gesture-toggle-btn:hover::before {\n    left: 100%;\n}\n\n#gesture-toggle-btn:hover {\n    background: rgba(0, 255, 255, 0.1);\n    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);\n    text-shadow: 0 0 5px rgba(0, 255, 255, 0.8);\n}\n",
+				">>",
+				"style.css"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "none"
+		}
+	]
+}

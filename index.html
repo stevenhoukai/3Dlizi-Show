@@ -1,11 +1,21 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 交互粒子系统</title>
+    <title>西山居-SSG-Q1-AI分享大会</title>
     <link rel="stylesheet" href="style.css">
+
+    <!-- Import Map for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 
     <!-- MediaPipe 依赖 -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -17,43 +27,100 @@
 </head>
 
 <body>
+    <!-- Skip Button (Outside Overlay to persist across phases) -->
+    <div id="skip-intro-btn">SKIP >></div>
+    <div id="gesture-toggle-btn">🖐 HANDS: ON</div>
+    <div id="global-bgm-btn">🎵 MUSIC: ON</div>
+
+    <!-- Cinematic Intro Overlay -->
+    <div id="intro-overlay">
+        <!-- Phase 1: Blockbuster Title -->
+        <div class="intro-blockbuster">2026-SSG-Q1-AI分享大会</div>
+
+        <!-- Phase 2: Original Content -->
+        <div class="intro-content">
+            <div class="intro-subtitle">穿越浩瀚宇宙</div>
+            <div class="intro-title">唯有爱与Tars值得信任</div>
+        </div>
+    </div>
+
     <!-- 用于摄像头输入的隐藏视频元素 -->
     <video id="input-video" style="display: none;"></video>
 
     <!-- Three.js 渲染容器 -->
     <div id="canvas-container"></div>
 
-    <!-- UI 面板 -->
-    <div id="ui-panel">
+    <!-- Has Tech Label (Dynamic Container) -->
+    <div id="tech-labels-container">
+        <!-- Labels will be injected by JS -->
+    </div>
+
+    <!-- UI Toggle Button -->
+    <button id="ui-toggle" title="Toggle Control Panel">
+        <span class="icon">⚙️</span>
+    </button>
+
+    <!-- Virtual Cursor -->
+    <div id="hand-cursor"></div>
+
+    <!-- UI Panel -->
+    <div id="ui-panel" class="closed">
         <div class="panel-header">
-            <h3>粒子控制器</h3>
-            <div class="status-indicator" id="camera-status">📷 摄像头初始化中...</div>
+            <h3>Particle Controller</h3>
+            <div class="status-indicator" id="camera-status">📷 Camera Initializing...</div>
         </div>
 
         <div class="control-group">
-            <label for="shape-select">粒子形状</label>
+            <label for="shape-select">Particle Shape</label>
             <select id="shape-select">
-                <option value="heart">❤️ 心形</option>
-                <option value="flower">🌸 花朵</option>
-                <option value="saturn">🪐 土星</option>
-                <option value="buddha">🧘 佛像(抽象)</option>
-                <option value="fireworks">🎆 烟花</option>
+                <option value="saturn">🪐 Saturn</option>
+                <option value="tornado">🌪️ Tornado Lottery</option>
+                <option value="fireworks">🎆 Fireworks</option>
             </select>
         </div>
 
         <div class="control-group">
-            <label for="color-picker">粒子颜色</label>
+            <label for="color-picker">Particle Color</label>
             <input type="color" id="color-picker" value="#00ffff">
         </div>
 
+        <div class="control-group">
+            <label for="color-scheme-select">Color Scheme</label>
+            <select id="color-scheme-select">
+                <option value="single">Single Color</option>
+                <option value="rainbow">🌈 Rainbow</option>
+                <option value="gradient-y">Gradient (Vertical)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="opacity-slider">Opacity</label>
+            <div class="slider-container">
+                <input type="range" id="opacity-slider" min="0.1" max="1.0" step="0.05" value="0.8">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label for="scale-slider">Model Scale</label>
+            <div class="slider-container">
+                <input type="range" id="scale-slider" min="0.1" max="3.0" step="0.1" value="1.0">
+            </div>
+        </div>
+
         <div class="info-text">
-            <p>👋 <b>手势控制:</b> 张开手掌扩散，握拳收缩</p>
-            <p>🖱️ <b>鼠标控制:</b> 滚轮调节缩放</p>
+            <p>👋 <b>Gestures:</b></p>
+            <p>Left Hand: Expand/Contract (Scale)</p>
+            <p>Right Hand: Move Cursor / Pinch to Click</p>
+            <p>🖱️ <b>Mouse:</b> Zoom & Parallax</p>
         </div>
     </div>
 
     <!-- 调试视图：显示摄像头识别结果 (可选，默认缩小放在角落) -->
     <canvas id="output-canvas" width="320" height="240"></canvas>
+
+    <audio id="bgm-player" loop>
+        <source src="bgm/Hans Zimmer - Cornfield Chase_L.ogg" type="audio/ogg">
+    </audio>
 
     <script type="module" src="script.js"></script>
 </body>

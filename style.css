@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+
 :root {
     --primary-color: #00ffff;
     --bg-color: #050510;
@@ -13,7 +15,8 @@ html {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background-color: var(--bg-color);
+    /* Deep space gradient */
+    background: radial-gradient(ellipse at center, #1b2735 0%, #090a0f 40%, #000000 100%);
     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     color: var(--text-color);
 }
@@ -25,6 +28,392 @@ html {
     top: 0;
     left: 0;
     z-index: 1;
+    opacity: 0;
+    /* Hidden initially for intro */
+    transition: opacity 2.0s ease-in-out;
+}
+
+#intro-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #000;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    pointer-events: auto;
+    /* Block interaction */
+}
+
+/* Skip Button Styles */
+#skip-intro-btn {
+    position: absolute;
+    top: 30px;
+    left: 30px;
+    color: rgba(0, 255, 255, 0.7);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 2px;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    padding: 8px 16px;
+    cursor: pointer;
+    background: linear-gradient(90deg, transparent 0%, rgba(0, 255, 255, 0.05) 100%);
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+    transition: all 0.3s ease;
+    z-index: 10003;
+    /* Above everything */
+    user-select: none;
+    pointer-events: auto;
+    /* Ensure clickable */
+    overflow: hidden;
+}
+
+#skip-intro-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+#skip-intro-btn:hover {
+    color: #fff;
+    border-color: rgba(0, 255, 255, 1);
+    background: rgba(0, 255, 255, 0.15);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+}
+
+#skip-intro-btn:hover::before {
+    left: 100%;
+}
+
+#skip-intro-btn:active {
+    transform: scale(0.95);
+}
+
+/* Global BGM Button (Mirrors Skip Button) */
+#global-bgm-btn {
+    position: absolute;
+    top: 25px;
+    /* Aligned with UI Toggle */
+    right: 80px;
+    /* Shifted left to avoid overlap with UI Toggle (20px + 44px + gap) */
+    color: rgba(0, 255, 255, 0.7);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 2px;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    padding: 8px 16px;
+    cursor: pointer;
+    background: linear-gradient(-90deg, transparent 0%, rgba(0, 255, 255, 0.05) 100%);
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    transition: all 0.3s ease;
+    z-index: 10003;
+    user-select: none;
+    pointer-events: auto;
+    overflow: hidden;
+    min-width: 120px;
+    text-align: center;
+}
+
+#global-bgm-btn.off {
+    color: rgba(255, 100, 100, 0.7);
+    border-color: rgba(255, 50, 50, 0.3);
+}
+
+#global-bgm-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+#global-bgm-btn:hover::before {
+    left: 100%;
+}
+
+#global-bgm-btn:hover {
+    color: #fff;
+    border-color: #00ffff;
+    background: rgba(0, 255, 255, 0.1);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+}
+
+
+.intro-content {
+    text-align: center;
+    perspective: 1000px;
+    /* Enable 3D transitions */
+}
+
+/* Base Styles */
+.intro-blockbuster {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 4rem;
+    font-weight: 900;
+    text-align: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    pointer-events: none;
+    /* Prevent blocking interaction */
+
+    /* Mirroring .intro-title style */
+    background: linear-gradient(180deg,
+            #ffffff 0%,
+            #bfbfbf 25%,
+            #828282 50%,
+            #bfbfbf 75%,
+            #ffffff 100%);
+    background-size: 100% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.1);
+
+    letter-spacing: 0.2em;
+    opacity: 0;
+    z-index: 1000;
+
+    /* Mysterious Sequence: 2s Delay, 13s Duration (4s In + 5s Hold + 4s Out) */
+    animation: mysteriousSequence 13s linear 2s forwards;
+}
+
+@keyframes mysteriousSequence {
+    0% {
+        /* Start (t=0) */
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.95);
+        filter: blur(20px);
+        letter-spacing: 0.5em;
+    }
+
+    30% {
+        /* Fade In Complete (t=4s, ~30.7%) */
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+        filter: blur(0px) drop-shadow(0 0 10px rgba(0, 255, 255, 0.2));
+        letter-spacing: 0.2em;
+    }
+
+    /* Hold Phase with Vibration (t=4s to t=9s) - 30% to 69% */
+    35% {
+        transform: translate(calc(-50% - 1px), calc(-50% + 1px)) scale(1.005);
+    }
+
+    40% {
+        transform: translate(calc(-50% + 1px), calc(-50% - 1px)) scale(1.01);
+    }
+
+    45% {
+        transform: translate(calc(-50% - 0.5px), -50%) scale(1.015);
+    }
+
+    50% {
+        transform: translate(-50%, calc(-50% + 1px)) scale(1.02);
+        filter: blur(0px) drop-shadow(0 0 25px rgba(0, 255, 255, 0.8));
+        /* Breathe Peak */
+    }
+
+    55% {
+        transform: translate(calc(-50% + 1px), calc(-50% + 1px)) scale(1.02);
+    }
+
+    60% {
+        transform: translate(calc(-50% - 1px), calc(-50% - 0.5px)) scale(1.015);
+    }
+
+    65% {
+        transform: translate(-50%, calc(-50% + 1px)) scale(1.01);
+    }
+
+    /* End Hold */
+
+    69% {
+        /* Start Fade Out (t=9s, ~69.2%) */
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+        filter: blur(0px) drop-shadow(0 0 10px rgba(0, 255, 255, 0.3));
+        letter-spacing: 0.2em;
+    }
+
+    100% {
+        /* Disappear (t=13s) */
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.1);
+        filter: blur(30px);
+        letter-spacing: 0.5em;
+    }
+}
+
+.intro-subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.5rem;
+
+    /* Metal Style */
+    background: linear-gradient(to bottom, #cfc7f8 0%, #ebb52d 100%);
+    /* Gold/Silver tinges */
+    background: linear-gradient(180deg, #d3d3d3 0%, #8a8a8a 50%, #d3d3d3 100%);
+    /* Silver-ish */
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+
+    letter-spacing: 0.1em;
+    margin-bottom: 20px;
+    opacity: 0;
+
+    /* Shifted: 2s Delay + 13s Blockbuster = 15s Start */
+    /* Vibrate aligned to 15s + 5s = 20s */
+    animation: cinematicSequence 13s linear 15s forwards, subtleVibrate 0.2s linear 20s 25;
+}
+
+.intro-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3rem;
+    font-weight: 900;
+    /* Heavier for impact */
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+
+    /* Cinematic Industrial Metal Style */
+    background: linear-gradient(180deg,
+            #ffffff 0%,
+            #bfbfbf 25%,
+            #828282 50%,
+            #bfbfbf 75%,
+            #ffffff 100%);
+    background-size: 100% 200%;
+    /* For potential shine animation */
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+
+    /* Text stroke for industrial definition */
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.1);
+
+    /* Initial opacity */
+    opacity: 0;
+    /* Shifted: 15s + 1.5s Gap = 16.5s Start */
+    /* Vibrate aligned to 16.5s + 5s = 21.5s */
+    animation: cinematicSequence 13s linear 16.5s forwards, subtleVibrate 0.2s linear 21.5s 25;
+}
+
+/* The Highlight Effect at 5s mark (roughly 38% of 13s) */
+/* We can add a second animation on top, or embed it in the main sequence */
+/* Let's use a separate animation class added by JS for precise timing, 
+   OR bake it into the keyframes. Baking is smoother for CSS only.
+   Sequence: 0-4s (In), 4-9s (Stay), 9-13s (Out).
+   5s mark is just after In finishes.
+   Highlight at t=5s (timestamp).
+   4s / 13s ~= 30%.
+   9s / 13s ~= 69%.
+*/
+@keyframes subtleVibrate {
+    0% {
+        transform: scale(1) translate(0, 0);
+    }
+
+    20% {
+        transform: scale(1) translate(-0.5px, 0.5px);
+    }
+
+    40% {
+        transform: scale(1) translate(0.5px, -0.5px);
+    }
+
+    60% {
+        transform: scale(1) translate(-1px, 0);
+    }
+
+    80% {
+        transform: scale(1) translate(0.5px, 1px);
+    }
+
+    100% {
+        transform: scale(1) translate(0, 0);
+    }
+}
+
+@keyframes cinematicSequence {
+    0% {
+        opacity: 0;
+        transform: scale(0.95);
+        filter: blur(10px) drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+        letter-spacing: 0.5em;
+    }
+
+    30% {
+        /* t=4s: Fully In */
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0) drop-shadow(0 0 10px rgba(0, 255, 255, 0.3));
+        /* Subtle ambient glow */
+        letter-spacing: 0.1em;
+    }
+
+    38% {
+        /* t=5s: Start Highlight Buildup */
+        filter: blur(0) drop-shadow(0 0 10px rgba(0, 255, 255, 0.5)) brightness(1);
+    }
+
+    40% {
+        /* t=5.2s: PEAK Highlight - Massive Flare */
+        /* Brightness boost + Strong Drop Shadow */
+        filter: blur(0) drop-shadow(0 0 30px rgba(255, 255, 255, 0.9)) brightness(2.5);
+        color: #ffffff;
+        /* Fallback */
+        letter-spacing: 0.12em;
+    }
+
+    42% {
+        /* t=5.5s: End Highlight */
+        filter: blur(0) drop-shadow(0 0 10px rgba(0, 255, 255, 0.3)) brightness(1);
+        letter-spacing: 0.1em;
+    }
+
+    69% {
+        /* t=9s: Start Fade Out */
+        opacity: 1;
+        transform: scale(1);
+        filter: blur(0) drop-shadow(0 0 10px rgba(0, 255, 255, 0.3));
+        letter-spacing: 0.1em;
+    }
+
+    100% {
+        /* t=13s: Fully Out - Decompose */
+        opacity: 0;
+        transform: scale(1.1);
+        filter: blur(20px) drop-shadow(0 0 50px rgba(0, 255, 255, 0));
+        letter-spacing: 0.5em;
+        /* Drift apart */
+    }
+}
+
+.fade-out-overlay {
+    opacity: 0;
+    transition: opacity 2.0s ease;
+    /* Overlay itself fades out after content is gone */
+}
+
+.show-scene {
+    opacity: 1 !important;
 }
 
 #ui-panel {
@@ -41,6 +430,29 @@ html {
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     z-index: 10;
     transition: all 0.3s ease;
+}
+
+#hand-cursor {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border: 2px solid var(--primary-color);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 9999;
+    display: none;
+    box-shadow: 0 0 15px var(--primary-color), inset 0 0 5px var(--primary-color);
+}
+
+#hand-cursor.active {
+    display: block;
+}
+
+#hand-cursor.clicking {
+    background-color: var(--primary-color);
+    transform: translate(-50%, -50%) scale(0.8);
+    box-shadow: 0 0 25px var(--primary-color);
 }
 
 .panel-header {
@@ -98,6 +510,387 @@ input[type="color"] {
     transition: border-color 0.2s;
 }
 
+/* Tech Label Styles */
+#tech-label {
+    position: absolute;
+    top: 50%;
+    /* Default, will be overridden by JS */
+    left: 50%;
+    transform: translate(-50%, -50%);
+    /* Centers the div specifically on the coordinate */
+    pointer-events: none;
+    /* Default to none, enabled by JS when visible */
+    z-index: 5;
+    /* Below UI panel (z-index 10) but above canvas (z-index 1) */
+    cursor: pointer;
+    user-select: none;
+    opacity: 0;
+    /* Default hidden */
+    transition: opacity 0.5s ease-out;
+    /* Smooth transition */
+}
+
+/* Tech Labels Container */
+#tech-labels-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Let clicks pass through empty space */
+    z-index: 5;
+}
+
+.tech-label {
+    position: absolute;
+    /* Move container up so bottom aligns with particle Position, then slight offset */
+    transform: translate(-50%, -100%);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+    z-index: 10;
+    padding-bottom: 10px;
+    /* Space between text and particle */
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Vertical line connecting text to particle */
+.tech-label::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    height: 10px;
+    /* Length of the line connecting to particle */
+    background: linear-gradient(to bottom, #00ffff, transparent);
+    transform: translateX(-50%);
+    box-shadow: 0 0 5px #00ffff;
+}
+
+.label-content {
+    font-family: 'Orbitron', 'Share Tech Mono', monospace;
+    /* Orbitron for strong mechanical feel */
+    font-size: 18px;
+    color: #e0ffff;
+    font-weight: 700;
+    /* Bold */
+    letter-spacing: 3px;
+    /* Wide spacing */
+    text-transform: uppercase;
+    /* Industrial/Mechanical look */
+
+    /* Pure text style - with mechanical accent */
+    background: linear-gradient(to top, rgba(0, 255, 255, 0.1) 0%, transparent 80%);
+    padding: 4px 10px;
+
+    /* Anchor line moved to bottom */
+    border-bottom: 2px solid #00ffff;
+    border-left: none;
+    /* Clear old borders */
+
+    box-shadow: none;
+    clip-path: none;
+
+    /* Stronger, sharper glow */
+    text-shadow:
+        0 0 1px rgba(0, 0, 0, 1),
+        0 0 2px #00ffff,
+        0 0 15px rgba(0, 255, 255, 0.5);
+
+    white-space: nowrap;
+    cursor: pointer;
+    pointer-events: auto;
+    /* Buttons clickable */
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    /* Center alignment reset */
+    margin-left: 0;
+
+    /* Bottom border for cleaner look above particle */
+    border-bottom: 2px solid rgba(0, 255, 255, 0.5);
+    border-left: none;
+    /* Remove side anchor */
+    border-right: none;
+    border-top: none;
+}
+
+.label-content:hover {
+    color: #ffffff;
+    background: rgba(0, 255, 255, 0.2);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.4);
+    text-shadow: 0 0 15px #00ffff, 0 0 30px #00ffff;
+    transform: scale(1.1) translateY(-5px);
+    /* Move up slightly on hover */
+    border-bottom: 2px solid #fff;
+}
+
+/* UI Panel Restyling */
+#ui-panel {
+    top: 60px;
+    /* Make room for toggle button if needed, or just style */
+    /* ... existing props ... */
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    box-shadow:
+        0 0 20px rgba(0, 255, 255, 0.1),
+        inset 0 0 30px rgba(0, 0, 0, 0.8);
+    background: rgba(10, 15, 30, 0.9);
+}
+
+/* Hide panel when closed */
+#ui-panel.closed {
+    transform: translateX(calc(100% + 40px));
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Toggle Button */
+#ui-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 44px;
+    height: 44px;
+    background: rgba(10, 15, 30, 0.9);
+    border: 1px solid rgba(0, 255, 255, 0.5);
+    border-radius: 8px;
+    /* Matching corner style */
+    cursor: pointer;
+    z-index: 100;
+    /* Above panel */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+}
+
+#ui-toggle:hover {
+    background: rgba(0, 255, 255, 0.2);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+    transform: rotate(90deg);
+}
+
+/* === Future Tech Alert (Camera Error) === */
+.tech-alert {
+    position: fixed;
+    top: 20%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(10, 0, 0, 0.95);
+    border: 1px solid #ff3333;
+    border-left: 5px solid #ff3333;
+    /* Strong accent */
+    box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+    color: #ff5555;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 24px 48px;
+    z-index: 10005;
+    text-align: center;
+    /* Cyberpunk sloped corners */
+    clip-path: polygon(20px 0, 100% 0,
+            100% calc(100% - 20px), calc(100% - 20px) 100%,
+            0 100%, 0 20px);
+
+    opacity: 0;
+    pointer-events: none;
+
+    /* Animation Sequence with Pulse Effect */
+    animation:
+        alertSequence 4.5s cubic-bezier(0.23, 1, 0.32, 1) forwards,
+        alertPulse 0.8s steps(2) infinite;
+}
+
+@keyframes alertSequence {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, -60%) skewX(-10deg);
+        filter: blur(10px);
+    }
+
+    10% {
+        /* Slam In */
+        opacity: 1;
+        transform: translate(-50%, -50%) skewX(0deg);
+        filter: blur(0px);
+    }
+
+    /* === SHAKE / VIBRATE PHASE (10% - 80%) === */
+    12% {
+        transform: translate(calc(-50% - 2px), calc(-50% + 1px));
+    }
+
+    14% {
+        transform: translate(calc(-50% + 2px), calc(-50% - 1px));
+    }
+
+    16% {
+        transform: translate(-50%, -50%);
+    }
+
+    40% {
+        transform: translate(-50%, -50%);
+    }
+
+    42% {
+        transform: translate(calc(-50% + 3px), -50%);
+    }
+
+    43% {
+        transform: translate(calc(-50% - 3px), calc(-50% + 2px));
+    }
+
+    45% {
+        transform: translate(-50%, -50%);
+    }
+
+    60% {
+        transform: translate(-50%, -50%);
+    }
+
+    61% {
+        transform: translate(calc(-50% - 2px), -50%);
+    }
+
+    62% {
+        transform: translate(calc(-50% + 2px), -50%);
+    }
+
+    63% {
+        transform: translate(-50%, -50%);
+    }
+
+    80% {
+        /* Hold End */
+        opacity: 1;
+        transform: translate(-50%, -50%);
+        filter: blur(0px);
+    }
+
+    100% {
+        /* Fate Out */
+        opacity: 0;
+        transform: translate(-50%, -40%);
+        filter: blur(20px);
+    }
+}
+
+@keyframes alertPulse {
+    0% {
+        box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+        border-color: #ff3333;
+        background: rgba(10, 0, 0, 0.9);
+    }
+
+    50% {
+        box-shadow: 0 0 50px rgba(255, 0, 0, 0.8), inset 0 0 20px rgba(255, 0, 0, 0.2);
+        border-color: #ff0000;
+        background: rgba(30, 0, 0, 0.95);
+    }
+
+    100% {
+        box-shadow: 0 0 30px rgba(255, 0, 0, 0.3);
+        border-color: #ff3333;
+        background: rgba(10, 0, 0, 0.9);
+    }
+}
+
+/* === Warp Hint Box (Tech Style) === */
+.warp-hint {
+    position: fixed;
+    bottom: 15%;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+
+    /* Tech Console Styling */
+    background: rgba(0, 15, 30, 0.9);
+    border: 1px solid #00ffff;
+    border-left: 4px solid #00ffff;
+    border-right: 4px solid #00ffff;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.1);
+
+    color: #e0ffff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 18px;
+    letter-spacing: 2px;
+    text-align: center;
+    padding: 15px 40px;
+    z-index: 10000;
+
+    /* Cyberpunk Shape */
+    clip-path: polygon(15px 0, 100% 0,
+            100% calc(100% - 15px), calc(100% - 15px) 100%,
+            0 100%, 0 15px);
+
+    /* Animation */
+    opacity: 0;
+    animation: hintFadeIn 1s cubic-bezier(0.23, 1, 0.32, 1) forwards 1s,
+        hintPulse 3s ease-in-out infinite 2s;
+    transition: opacity 0.5s;
+}
+
+@keyframes hintFadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes hintPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 15px rgba(0, 255, 255, 0.1), inset 0 0 10px rgba(0, 255, 255, 0.05);
+        border-color: rgba(0, 255, 255, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 25px rgba(0, 255, 255, 0.3), inset 0 0 15px rgba(0, 255, 255, 0.15);
+        border-color: rgba(0, 255, 255, 0.9);
+    }
+}
+
+.tech-alert .alert-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+}
+
+.tech-alert .alert-msg {
+    font-size: 1rem;
+    color: #ffaaaa;
+    letter-spacing: 0.05em;
+}
+
+.tech-alert .alert-sub {
+    font-size: 0.8rem;
+    margin-top: 12px;
+    opacity: 0.7;
+    border-top: 1px solid rgba(255, 0, 0, 0.3);
+    padding-top: 8px;
+}
+
+#ui-toggle .icon {
+    font-size: 20px;
+    filter: drop-shadow(0 0 2px #00ffff);
+}
+
+
+
 select:hover {
     border-color: var(--primary-color);
 }
@@ -132,8 +925,116 @@ input[type="color"] {
     height: 120px;
     border-radius: 8px;
     border: 2px solid rgba(255, 255, 255, 0.1);
-    z-index: 10;
+    z-index: 10005;
+    /* Lifted above Intro/Warp layers */
     opacity: 0.7;
     transform: scaleX(-1);
     /* 镜像显示 */
 }
+
+.cyber-button {
+    background: rgba(0, 255, 255, 0.1);
+    border: 1px solid #00ffff;
+    color: #00ffff;
+    font-family: inherit;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%;
+    margin-top: 5px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 0 5px rgba(0, 255, 255, 0.2);
+}
+
+.cyber-button:hover {
+    background: rgba(0, 255, 255, 0.3);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+    text-shadow: 0 0 5px #00ffff;
+}
+
+.cyber-button.off {
+    border-color: #555;
+    color: #888;
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: none;
+    text-shadow: none;
+}
+
+. l o t t e r y - w i n n e r    {
+         f o n t - s i z e :    3 2 p x    ! i m p o r t a n t ;
+         c o l o r :    # f f c c 0 0    ! i m p o r t a n t ;
+         b o r d e r - b o t t o m :    4 p x   s o l i d   # f f c c 0 0    ! i m p o r t a n t ;
+         t e x t - s h a d o w :    0   0   1 0 p x   # f f c c 0 0 ,    0   0   3 0 p x   # f f 0 0 0 0    ! i m p o r t a n t ;
+         z - i n d e x :    1 0 0 0 ;
+         a n i m a t i o n :    w i n n e r P u l s e   1 s   i n f i n i t e   a l t e r n a t e ;
+       
+}
+
+     @ k e y f r a m e s   w i n n e r P u l s e    {
+         f r o m    {
+           t r a n s f o r m :    s c a l e ( 1 ) ;
+           
+    }
+
+         t o    {
+           t r a n s f o r m :    s c a l e ( 1 . 2 ) ;
+           
+    }
+
+       
+}
+
+     # g e s t u r e - t o g g l e - b t n   { 
+   p o s i t i o n :   a b s o l u t e ; 
+   t o p :   2 5 p x ; 
+   r i g h t :   2 2 0 p x ;   / *   L e f t   o f   B G M   b u t t o n   ( 8 0   +   1 2 0   +   2 0 )   * / 
+   c o l o r :   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 7 ) ; 
+   f o n t - f a m i l y :    
+ S h a r e  
+ T e c h  
+ M o n o ,   m o n o s p a c e ; 
+   f o n t - s i z e :   1 4 p x ; 
+   l e t t e r - s p a c i n g :   2 p x ; 
+   b o r d e r :   1 p x   s o l i d   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 3 ) ; 
+   p a d d i n g :   8 p x   1 6 p x ; 
+   c u r s o r :   p o i n t e r ; 
+   b a c k g r o u n d :   l i n e a r - g r a d i e n t ( - 9 0 d e g ,   t r a n s p a r e n t   0 % ,   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 0 5 )   1 0 0 % ) ; 
+   c l i p - p a t h :   p o l y g o n ( 0   0 ,   c a l c ( 1 0 0 %   -   1 0 p x )   0 ,   1 0 0 %   1 0 p x ,   1 0 0 %   1 0 0 % ,   1 0 p x   1 0 0 % ,   0   c a l c ( 1 0 0 %   -   1 0 p x ) ) ; 
+   t r a n s i t i o n :   a l l   0 . 3 s   e a s e ; 
+   z - i n d e x :   1 0 0 0 3 ; 
+   u s e r - s e l e c t :   n o n e ; 
+   p o i n t e r - e v e n t s :   a u t o ; 
+   o v e r f l o w :   h i d d e n ; 
+   m i n - w i d t h :   1 2 0 p x ; 
+   t e x t - a l i g n :   c e n t e r ; 
+ } 
+ 
+ # g e s t u r e - t o g g l e - b t n . o f f   { 
+   c o l o r :   r g b a ( 2 5 5 ,   1 0 0 ,   1 0 0 ,   0 . 7 ) ; 
+   b o r d e r - c o l o r :   r g b a ( 2 5 5 ,   5 0 ,   5 0 ,   0 . 3 ) ; 
+ } 
+ 
+ # g e s t u r e - t o g g l e - b t n : : b e f o r e   { 
+   c o n t e n t :   ' ; 
+   p o s i t i o n :   a b s o l u t e ; 
+   t o p :   0 ; 
+   l e f t :   - 1 0 0 % ; 
+   w i d t h :   1 0 0 % ; 
+   h e i g h t :   1 0 0 % ; 
+   b a c k g r o u n d :   l i n e a r - g r a d i e n t ( 9 0 d e g ,   t r a n s p a r e n t ,   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 2 ) ,   t r a n s p a r e n t ) ; 
+   t r a n s i t i o n :   l e f t   0 . 5 s   e a s e ; 
+ } 
+ 
+ # g e s t u r e - t o g g l e - b t n : h o v e r : : b e f o r e   { 
+   l e f t :   1 0 0 % ; 
+ } 
+ 
+ # g e s t u r e - t o g g l e - b t n : h o v e r   { 
+   b a c k g r o u n d :   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 1 ) ; 
+   b o x - s h a d o w :   0   0   1 5 p x   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 3 ) ; 
+   t e x t - s h a d o w :   0   0   5 p x   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 8 ) ; 
+ } 
+  
+ 
