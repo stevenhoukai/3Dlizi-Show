@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ending</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Orbitron', sans-serif;
+            color: #0ff;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* Vignette & Scanlines */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+            background:
+                radial-gradient(circle, transparent 60%, rgba(0, 0, 0, 0.9) 100%),
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 100%, 100% 4px, 6px 100%;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% {
+                background-position: 0 0, 0 0, 0 0;
+            }
+
+            100% {
+                background-position: 0 0, 0 100%, 0 0;
+            }
+        }
+
+        /* HUD */
+        .hud {
+            position: absolute;
+            z-index: 10;
+            padding: 30px;
+            pointer-events: none;
+            box-sizing: border-box;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .hud-bottom {
+            align-items: flex-end;
+        }
+
+        .hud-item {
+            text-transform: uppercase;
+            text-shadow: 0 0 10px #0ff;
+        }
+
+        .hud-label {
+            font-size: 12px;
+            opacity: 0.7;
+            display: block;
+            margin-bottom: 5px;
+            letter-spacing: 1px;
+        }
+
+        .hud-value {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 2px;
+        }
+
+        /* Camera Feed */
+        #camera-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 150px;
+            border: 2px solid #0ff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            overflow: hidden;
+            z-index: 20;
+            opacity: 0.9;
+            background: #000;
+        }
+
+        #input_video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            /* Mirror feedback */
+        }
+
+        .cam-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            box-sizing: border-box;
+        }
+
+        .cam-overlay::before,
+        .cam-overlay::after {
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border: 3px solid #0ff;
+        }
+
+        .cam-overlay::before {
+            top: 0;
+            left: 0;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .cam-overlay::after {
+            bottom: 0;
+            right: 0;
+            border-left: none;
+            border-top: none;
+        }
+
+        /* Loading */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #0ff;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            letter-spacing: 5px;
+            z-index: 100;
+            text-align: center;
+            text-shadow: 0 0 20px #0ff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="loading">SYSTEM INITIALIZING...</div>
+
+    <div id="canvas-container"></div>
+
+    <div class="overlay"></div>
+
+    <div class="hud">
+        <div class="hud-row">
+            <div class="hud-item">
+                <span class="hud-label">FPS</span>
+                <span class="hud-value" id="fps-display">60</span>
+            </div>
+            <div class="hud-item" style="text-align: right;">
+                <span class="hud-label">ACTIVE PARTICLES</span>
+                <span class="hud-value">45,000</span>
+            </div>
+        </div>
+        <div class="hud-row hud-bottom">
+            <div class="hud-item">
+                <span class="hud-label">LEFT HAND [CMD]</span>
+                <span class="hud-value" id="left-status">OFFLINE</span>
+            </div>
+            <!-- Camera is centered here absolutely -->
+            <div class="hud-item" style="text-align: right;">
+                <span class="hud-label">RIGHT HAND [PHYS]</span>
+                <span class="hud-value" id="right-status">OFFLINE</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="camera-container">
+        <video id="input_video" autoplay playsinline muted></video>
+        <div class="cam-overlay"></div>
+    </div>
+
+    <!-- Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <script>
+        // --- Configuration ---
+        const CONFIG = {
+            particleCount: 45000,
+            particleSize: 2.1, // Adjusted for performance/visibility balance
+            colors: {
+                default: 0x0055ff,
+                one: 0x00FFFF,   // Cyan
+                two: 0xFFFF00,   // Yellow
+                three: 0xFF00FF, // Pink
+                four: 0x00FF88,  // Neon Green
+                five: 0xFF8800,  // Orange (Catch/Thank You)
+            },
+            physics: {
+                returnSpeed: 0.16,
+                scatterForce: 250,
+                friction: 0.92,
+                ultFriction: 0.82 // Bouncier for ultimate
+            },
+            textData: [
+                "General Planner\nHuang Chenglong",
+                "Producer\nHuang Chenglong\nWang Peng\nChen Gang",
+                "Executive\nHou Kai",
+                "Speakers\nDu Jingyu    Zhang Zhenyu\nShe Ailun    Hu Chengguang",
+                "Thank You"
+            ]
+        };
+
+        // --- Globals ---
+        let scene, camera, renderer, particles, geometry;
+        let particleData = [];
+        const canvasContainer = document.getElementById('canvas-container');
+        const videoElement = document.getElementById('input_video');
+
+        let screenWidth = window.innerWidth;
+        let screenHeight = window.innerHeight;
+
+        // Hand State
+        const HandState = {
+            left: { active: false, fingers: 0, position: new THREE.Vector3() },
+            right: { active: false, open: false, position: new THREE.Vector3(), tip: new THREE.Vector3() }
+        };
+
+        // Interaction State
+        let currentMode = 0; // 0=None, 1-4=Text, 5=Catch
+        let isRightHandOpen = false; // Nebula trigger
+        let isUltMode = false; // Left(5) + Right(Open)
+
+        // Text Cache
+        const textTargetCache = [];
+
+        // --- Initialization ---
+        async function init() {
+            initThree();
+            await initTextTargets();
+            initParticles();
+            initMediaPipe();
+            animate();
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function initThree() {
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.0005);
+
+            // Camera position adjusted for movie-like immersion
+            camera = new THREE.PerspectiveCamera(75, screenWidth / screenHeight, 1, 6000);
+            camera.position.z = 1800; // Closer for impact
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(screenWidth, screenHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            canvasContainer.appendChild(renderer.domElement);
+
+            window.addEventListener('resize', () => {
+                screenWidth = window.innerWidth;
+                screenHeight = window.innerHeight;
+                camera.aspect = screenWidth / screenHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(screenWidth, screenHeight);
+            });
+        }
+
+        // --- Text System ---
+        function createTextCanvas(text, fontSize = 100, color = "#FFFFFF") {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            const lines = text.split('\n');
+            const maxWidth = Math.max(...lines.map(l => l.length)) * fontSize * 0.8;
+            const totalTextHeight = lines.length * fontSize * 1.5; // More spacing buffer
+
+            canvas.width = Math.max(screenWidth, maxWidth + 300);
+            // Ensure canvas is tall enough for 4+ lines of large text
+            canvas.height = Math.max(screenHeight, totalTextHeight + 400);
+
+            // Clear background to transparent so alpha channel works for sampling
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = color;
+            ctx.font = `900 ${fontSize}px "Orbitron", sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.shadowColor = "#ffffff";
+            ctx.shadowBlur = 10;
+
+            const startY = (canvas.height / 2) - ((lines.length - 1) * fontSize * 1.3) / 2;
+
+            lines.forEach((line, i) => {
+                ctx.fillText(line, canvas.width / 2, startY + i * fontSize * 1.3);
+            });
+
+            return ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+
+        async function initTextTargets() {
+            // Wait for fonts to load
+            await document.fonts.ready;
+
+            for (let t of CONFIG.textData) {
+                // Movie poster size fonts
+                const imgData = createTextCanvas(t, 220, '#FFFFFF');
+                const points = [];
+                // Higher density sampling - Step 2 for better resolution
+                const step = 2;
+                for (let y = 0; y < imgData.height; y += step) {
+                    for (let x = 0; x < imgData.width; x += step) {
+                        const alpha = imgData.data[(y * imgData.width + x) * 4 + 3];
+                        if (alpha > 128) {
+                            const px = x - imgData.width / 2;
+                            const py = -(y - imgData.height / 2);
+                            points.push({ x: px, y: py });
+                        }
+                    }
+                }
+                // Shuffle points
+                points.sort(() => Math.random() - 0.5);
+                textTargetCache.push(points);
+            }
+        }
+
+        function getTargetPosition(index, pIndex) {
+            const pts = textTargetCache[index];
+            if (!pts || pts.length === 0) return null;
+            return pts[pIndex % pts.length];
+        }
+
+        // --- Particle System ---
+        function initParticles() {
+            geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(CONFIG.particleCount * 3);
+            const sizes = new Float32Array(CONFIG.particleCount);
+            const colors = new Float32Array(CONFIG.particleCount * 3);
+
+            const colorObj = new THREE.Color(CONFIG.colors.default);
+            const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                // Fibonacci Sphere Distribution
+                const yNorm = 1 - (i / (CONFIG.particleCount - 1)) * 2; // -1 to 1
+                const radius = Math.sqrt(1 - yNorm * yNorm);
+
+                const theta = goldenAngle * i;
+
+                // Radius with slight volume variation (Shell-like but with depth)
+                const r = 900 + Math.random() * 400;
+
+                const ox = Math.cos(theta) * radius * r;
+                const oy = yNorm * r;
+                const oz = Math.sin(theta) * radius * r;
+
+                // Initial position: Start ON the sphere (Boiling planet)
+                positions[i * 3] = ox;
+                positions[i * 3 + 1] = oy;
+                positions[i * 3 + 2] = oz;
+
+                sizes[i] = CONFIG.particleSize * (0.8 + Math.random() * 1.5); // Varying sizes
+
+                colors[i * 3] = colorObj.r;
+                colors[i * 3 + 1] = colorObj.g;
+                colors[i * 3 + 2] = colorObj.b;
+
+                particleData.push({
+                    vx: 0, vy: 0, vz: 0,
+                    ox: ox, oy: oy, oz: oz,
+                    tx: null, ty: null, tz: null,
+                });
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const sprite = generateSprite();
+            const material = new THREE.PointsMaterial({
+                size: CONFIG.particleSize * 4,
+                map: sprite,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.85,
+                sizeAttenuation: true
+            });
+
+            particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+        }
+
+        function generateSprite() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            // Irregular geometric shard
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.moveTo(32, 0);
+            ctx.lineTo(48, 24);
+            ctx.lineTo(64, 32);
+            ctx.lineTo(48, 40);
+            ctx.lineTo(32, 64);
+            ctx.lineTo(16, 40);
+            ctx.lineTo(0, 32);
+            ctx.lineTo(16, 24);
+            ctx.closePath();
+            ctx.fill();
+
+            // Glow
+            const grad = ctx.createRadialGradient(32, 32, 4, 32, 32, 32);
+            grad.addColorStop(0, 'rgba(255,255,255,1)');
+            grad.addColorStop(1, 'rgba(255,255,255,0)');
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 64, 64);
+
+            const texture = new THREE.Texture(canvas);
+            texture.needsUpdate = true;
+            return texture;
+        }
+
+        // --- Logic & Loop ---
+        function updateLogic() {
+            let targetColorHex = CONFIG.colors.default;
+
+            // Relaxed Catch Mode detection (Must be strictly 5 for Left Hand Catch Mode)
+            if (HandState.left.active) {
+                if (HandState.left.fingers >= 5) {
+                    currentMode = 5;
+                } else if (HandState.left.fingers > 0) {
+                    currentMode = HandState.left.fingers;
+                } else {
+                    currentMode = 0;
+                }
+            } else {
+                currentMode = 0;
+            }
+
+            if (isUltMode) {
+                targetColorHex = CONFIG.colors.five;
+                document.getElementById('left-status').innerText = 'LINKED';
+                document.getElementById('right-status').innerText = 'SYNC';
+                document.getElementById('left-status').style.color = '#FF8800';
+            } else {
+                if (HandState.left.active) {
+                    const fingers = HandState.left.fingers;
+                    if (currentMode === 5) {
+                        targetColorHex = CONFIG.colors.five;
+                        document.getElementById('left-status').innerText = 'CATCH MODE';
+                        document.getElementById('left-status').style.color = '#FF8800';
+                    } else if (currentMode > 0) {
+                        // ... existing text mode logic ...
+                        const modes = ['PLANNER', 'PRODUCER', 'EXECUTIVE', 'SPEAKERS'];
+                        const keys = ['one', 'two', 'three', 'four'];
+                        // Fix for modes > 4 if sensitivity causes jump
+                        const idx = Math.min(Math.max(0, currentMode - 1), 3);
+                        targetColorHex = CONFIG.colors[keys[idx]];
+                        document.getElementById('left-status').innerText = modes[idx];
+                        document.getElementById('left-status').style.color = '#' + new THREE.Color(targetColorHex).getHexString();
+                    } else {
+                        // ...
+                        document.getElementById('left-status').innerText = 'STANDBY';
+                        document.getElementById('left-status').style.color = '#0ff';
+                    }
+                } else {
+                    // ...
+                    document.getElementById('left-status').innerText = 'NO SIGNAL';
+                    document.getElementById('left-status').style.color = '#555';
+                }
+
+                if (HandState.right.active) {
+                    document.getElementById('right-status').innerText = HandState.right.open ? 'NEBULA' : 'INTERACT';
+                    document.getElementById('right-status').style.color = HandState.right.open ? '#FF00FF' : '#00FFFF';
+                    isRightHandOpen = HandState.right.open;
+                } else {
+                    document.getElementById('right-status').innerText = 'NO SIGNAL';
+                    document.getElementById('right-status').style.color = '#555';
+                    isRightHandOpen = false;
+                }
+            }
+
+            isUltMode = (currentMode === 5 && isRightHandOpen);
+            updateParticles(targetColorHex);
+        }
+
+        function updateParticles(targetColorHex) {
+            const positions = particles.geometry.attributes.position.array;
+            const colors = particles.geometry.attributes.color.array;
+
+            const tr = new THREE.Color(targetColorHex);
+            const trR = tr.r, trG = tr.g, trB = tr.b; // Cache color values
+
+            // Screen mapping
+            const vHeight = 2 * Math.tan((camera.fov * Math.PI / 180) / 2) * camera.position.z;
+            const vWidth = vHeight * camera.aspect;
+
+            // Hand positions
+            const rx = HandState.right.tip.x * vWidth / 2;
+            const ry = HandState.right.tip.y * vHeight / 2;
+
+            const lx = HandState.left.position.x * vWidth / 2;
+            const ly = HandState.left.position.y * vHeight / 2;
+
+            const time = Date.now() * 0.001;
+            const timeMs = Date.now();
+            const currentFriction = isUltMode ? CONFIG.physics.ultFriction : CONFIG.physics.friction;
+
+            // Interaction configs cache
+            const returnSpeed = CONFIG.physics.returnSpeed;
+            const scatterForce = CONFIG.physics.scatterForce;
+
+            // Pre-calculate rotation for idle state
+            const rotSpeed = 0.05 * time;
+            const cosRot = Math.cos(rotSpeed);
+            const sinRot = Math.sin(rotSpeed);
+
+            // Pre-calculate loop invariants
+            const flutterTime = timeMs * 0.005;
+            const isRightActive = HandState.right.active && !isUltMode;
+            const rangeOpen = 800 * 800; // Squared
+            const rangeClose = 300 * 300; // Squared
+            const activeRangeSq = isRightHandOpen ? rangeOpen : rangeClose;
+            const activeRange = isRightHandOpen ? 800 : 300;
+            const pushStrength = isRightHandOpen ? 80 : scatterForce;
+
+            for (let i = 0; i < CONFIG.particleCount; i++) {
+                const i3 = i * 3;
+                const px = positions[i3];
+                const py = positions[i3 + 1];
+                const pz = positions[i3 + 2];
+
+                const p = particleData[i];
+
+                let tx = p.ox;
+                let ty = p.oy;
+                let tz = p.oz;
+
+                // Color Morph - Optimized
+                colors[i3] += (trR - colors[i3]) * 0.1;
+                colors[i3 + 1] += (trG - colors[i3 + 1]) * 0.1;
+                colors[i3 + 2] += (trB - colors[i3 + 2]) * 0.1;
+
+                // Black Lines Texture in Ult Mode
+                if (isUltMode && i % 30 < 5) {
+                    colors[i3] *= 0.1; colors[i3 + 1] *= 0.1; colors[i3 + 2] *= 0.1;
+                }
+
+                if (isUltMode) {
+                    const txtPoint = getTargetPosition(4, i);
+                    if (txtPoint) {
+                        tx = lx + txtPoint.x;
+                        ty = ly + txtPoint.y;
+                        tz = 200;
+                    }
+                } else if (currentMode >= 1 && currentMode <= 4) {
+                    const txtPoint = getTargetPosition(currentMode - 1, i);
+                    if (txtPoint) {
+                        // Jittery electric effect
+                        const flutter = Math.sin(flutterTime + i) * 3;
+
+                        // Brightness boost via layer stacking without Math.random() for per-frame noise
+                        // Use deterministic chaos based on index to stable jitter
+                        const noiseX = ((i * 12.9898) % 1) * 6 - 3;
+                        const noiseY = ((i * 78.233) % 1) * 6 - 3;
+
+                        tx = txtPoint.x + noiseX;
+                        ty = txtPoint.y + noiseY;
+
+                        // Move closer to camera for impact, but keep it readable
+                        const zOffset = 200;
+
+                        // 5 Layers for deep 3D volumetric font look
+                        const layer = (i % 5) - 2;
+                        tz = layer * 15 + flutter + zOffset;
+                    }
+                } else if (currentMode === 5) {
+                    tx = lx + Math.cos(time + i) * 150;
+                    ty = ly + Math.sin(time + i) * 150;
+                    tz = Math.sin(time * 2 + i) * 150;
+                } else if (isRightHandOpen) {
+                    // Nebula Expand
+                    tx = p.ox * 2;
+                    ty = p.oy * 2;
+                } else {
+                    // Idle State (Boiling Planet) 
+                    // Use pre-calculated rotation
+                    const ox = p.ox * cosRot - p.oz * sinRot;
+                    const oz = p.ox * sinRot + p.oz * cosRot;
+
+                    const noise = Math.sin(time * 3 + i * 0.1) * 30; // Stronger boil
+                    tx = ox + noise;
+                    ty = p.oy + noise;
+                    tz = oz + noise;
+                }
+
+                // Physics
+                const dx = tx - px;
+                const dy = ty - py;
+                const dz = tz - pz;
+
+                // Spring force
+                let forceX = dx * returnSpeed;
+                let forceY = dy * returnSpeed;
+                let forceZ = dz * returnSpeed;
+
+                // Interaction - Optimized
+                if (isRightActive) {
+                    const distSq = (px - rx) ** 2 + (py - ry) ** 2;
+
+                    if (distSq < activeRangeSq) {
+                        const distR = Math.sqrt(distSq); // Only calc sqrt if needed
+                        const angle = Math.atan2(py - ry, px - rx);
+                        const force = Math.pow((activeRange - distR) / activeRange, 2);
+
+                        let wave = 1;
+                        if (isRightHandOpen) {
+                            wave = Math.sin(distR * 0.02 - time * 5) * 3;
+                        }
+
+                        // 2D Push
+                        p.vx += Math.cos(angle) * force * pushStrength * wave;
+                        p.vy += Math.sin(angle) * force * pushStrength * wave;
+                    }
+                }
+
+                // Integrate
+                p.vx += forceX * 0.01;
+                p.vy += forceY * 0.01;
+                p.vz += forceZ * 0.01;
+
+                p.vx *= currentFriction;
+                p.vy *= currentFriction;
+                p.vz *= currentFriction;
+
+                positions[i3] += p.vx;
+                positions[i3 + 1] += p.vy;
+                positions[i3 + 2] += p.vz;
+            }
+
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.geometry.attributes.color.needsUpdate = true;
+        }
+
+        // --- Helper: FPS ---
+        let lastTime = performance.now();
+        let frameCount = 0;
+        function updateFPS() {
+            const now = performance.now();
+            frameCount++;
+            if (now - lastTime >= 1000) {
+                document.getElementById('fps-display').innerText = frameCount + " FPS";
+                frameCount = 0;
+                lastTime = now;
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateLogic();
+            updateFPS();
+            renderer.render(scene, camera);
+        }
+
+        // --- MediaPipe Hand Tracking ---
+        function onResults(results) {
+            HandState.left.active = false;
+            HandState.right.active = false;
+
+            if (results.multiHandLandmarks && results.multiHandedness) {
+                for (let index = 0; index < results.multiHandLandmarks.length; index++) {
+                    const classification = results.multiHandedness[index];
+                    const landmarks = results.multiHandLandmarks[index];
+
+                    // Count Fingers
+                    let fingers = 0;
+
+                    // 1. Thumb Logic: Check distance from Thumb Tip(4) to Pinky MCP(17)
+                    // Scale reference: Wrist(0) to Index MCP(5)
+                    const scale = Math.hypot(landmarks[5].x - landmarks[0].x, landmarks[5].y - landmarks[0].y);
+                    const thumbDist = Math.hypot(landmarks[4].x - landmarks[17].x, landmarks[4].y - landmarks[17].y);
+
+                    if (thumbDist > scale * 1.5) fingers++;
+
+                    // 2. Four Fingers Logic (Index, Middle, Ring, Pinky)
+                    // Check if Tip is further from Wrist than PIP
+                    const fingerTips = [8, 12, 16, 20];
+                    const fingerPips = [6, 10, 14, 18];
+
+                    for (let i = 0; i < 4; i++) {
+                        const dTip = Math.hypot(landmarks[fingerTips[i]].x - landmarks[0].x, landmarks[fingerTips[i]].y - landmarks[0].y);
+                        const dPip = Math.hypot(landmarks[fingerPips[i]].x - landmarks[0].x, landmarks[fingerPips[i]].y - landmarks[0].y);
+
+                        // Sensitive check (No multiplier)
+                        if (dTip > dPip) fingers++;
+                    }
+
+                    // Coordinate Mapping with X Mirroring Fix
+                    // Standard: (x - 0.5) * 2. 
+                    // Mirrored: (0.5 - x) * 2.
+                    const cx = (0.5 - landmarks[9].x) * 2;
+                    const cy = -(landmarks[9].y - 0.5) * 2;
+
+                    const tx = (0.5 - landmarks[8].x) * 2;
+                    const ty = -(landmarks[8].y - 0.5) * 2;
+
+                    // SWAP LOGIC:
+                    // In a default webcam stream (unmirrored raw), the label 'Left' actually corresponds 
+                    // to the user's Right hand (which appears on the left side of the raw frame).
+                    // We want to map User's Right Hand -> HandState.right (Physics).
+                    // So: Label 'Left' -> HandState.right.
+
+                    if (classification.label === 'Left') {
+                        // This is physically the Right Hand
+                        HandState.right.active = true;
+                        // Relaxed open detection: >= 4 fingers
+                        HandState.right.open = (fingers >= 4);
+                        HandState.right.position.set(cx, cy, 0);
+                        HandState.right.tip.set(tx, ty, 0);
+                    } else {
+                        // This is physically the Left Hand
+                        HandState.left.active = true;
+                        HandState.left.fingers = fingers;
+                        HandState.left.position.set(cx, cy, 0);
+                    }
+                }
+            }
+        }
+
+        function initMediaPipe() {
+            const hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+            hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.7
+            });
+            hands.onResults(onResults);
+
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({ image: videoElement });
+                },
+                width: 640,
+                height: 480
+            });
+            camera.start();
+        }
+
+        init();
+
+    </script>
+</body>
+
+</html>
