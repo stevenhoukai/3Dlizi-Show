@@ -95,6 +95,21 @@
             letter-spacing: 2px;
         }
 
+        /* Light Beams */
+        .light-beams {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+            /* Deep sea ambient glow around the light source */
+            background: radial-gradient(ellipse at 50% 0%, rgba(180, 230, 255, 0.25) 0%, transparent 60%);
+        }
+
+
         /* Camera Feed */
         #camera-container {
             position: absolute;
@@ -233,7 +248,7 @@
                 ultFriction: 0.82 // Bouncier for ultimate
             },
             textData: [
-                "General Planner\nHuang Chenglong",
+                "General Planner\nLiu Zihao    Huang Chenglong",
                 "Producer\nHuang Chenglong\nWang Peng\nChen Gang",
                 "Executive\nHou Kai",
                 "Speakers\nDu Jingyu    Zhang Zhenyu\nShe Ailun    Hu Chengguang",
@@ -261,12 +276,24 @@
         let isRightHandOpen = false; // Nebula trigger
         let isUltMode = false; // Left(5) + Right(Open)
 
+        // Flash Effect State (Managed with a decay value now, not just a boolean toggle)
+        let lastMode = 0;
+        let wasUltMode = false;
+        let flashValue = 0.0; // 0.0 to 1.0+ (can be overdriven for bloom)
+
+        // God Rays Shader Uniforms
+        const godRaysUniforms = {
+            uTime: { value: 0 },
+            uResolution: { value: new THREE.Vector2() }
+        };
+
         // Text Cache
         const textTargetCache = [];
 
         // --- Initialization ---
         async function init() {
             initThree();
+            initGodRays();
             await initTextTargets();
             initParticles();
             initMediaPipe();
@@ -293,7 +320,131 @@
                 camera.aspect = screenWidth / screenHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(screenWidth, screenHeight);
+                godRaysUniforms.uResolution.value.set(screenWidth, screenHeight);
             });
+            // Initial call
+            godRaysUniforms.uResolution.value.set(screenWidth, screenHeight);
+        }
+
+        // --- Volumetric Light Shader (God Rays) ---
+        function initGodRays() {
+            // Vertex Shader: Standard Fullscreen Quad
+            const vertexShader = `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `;
+
+            // Fragment Shader: Simplified & Robust Volumetric Light
+            const fragmentShader = `
+                uniform float uTime;
+                varying vec2 vUv;
+
+                // Hash function for randomness
+                float random(vec2 st) {
+                    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+                }
+
+                // 2D Noise
+                float noise(vec2 st) {
+                    vec2 i = floor(st);
+                    vec2 f = fract(st);
+                    float a = random(i);
+                    float b = random(i + vec2(1.0, 0.0));
+                    float c = random(i + vec2(0.0, 1.0));
+                    float d = random(i + vec2(1.0, 1.0));
+                    vec2 u = f * f * (3.0 - 2.0 * f);
+                    return mix(a, b, u.x) + (c - a)* u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+                }
+
+                // Fractal Brownian Motion for smoke/clouds/rays
+                float fbm(vec2 st) {
+                    float value = 0.0;
+                    float amplitude = 0.5;
+                    float frequency = 0.0;
+                    // Loop of octaves
+                    for (int i = 0; i < 5; i++) {
+                        value += amplitude * noise(st);
+                        st *= 2.0;
+                        amplitude *= 0.5;
+                    }
+                    return value;
+                }
+
+                void main() {
+                    vec2 uv = vUv;
+                    
+                    // Center the coordinate system for ray calculation
+                    // Light source at top center
+                    vec2 lightPos = vec2(0.5, 1.1);
+                    vec2 dir = uv - lightPos;
+                    float dist = length(dir);
+                    
+                    // Radial angle
+                    float angle = atan(dir.y, dir.x);
+                    
+                    // Ray generation logic:
+                    // We map the angle to noise to create streaks provided by fbm
+                    // Offset by time to make them sway/rotate slowly.
+                    // Increased speed (0.1 -> 0.2) and distortion strength.
+                    float rayNoise = fbm(vec2(angle * 6.0 + uTime * 0.2, dist * 0.5 - uTime * 0.3));
+                    
+                    // Sharpen the rays
+                    float rays = smoothstep(0.3, 0.7, rayNoise);
+                    
+                    // Spotlight cone masking (Downwards)
+                    // We only want rays pointing roughly down (-PI/2)
+                    // atan2(y, x) -> down is -1.57. 
+                    // Let's us simple distance fading + vertical fade
+                    
+                    float spot = 1.0 - smoothstep(0.0, 1.2, dist);
+                    
+                    // Horizontal fade to keep it center-ish
+                    float centerFade = 1.0 - smoothstep(0.0, 0.8, abs(uv.x - 0.5));
+
+                    // Caustics shimmer
+                    float shimmer = noise(uv * 10.0 + uTime * 0.5) * 0.2;
+                    
+                    // Composition
+                    float brightness = rays * spot * centerFade + shimmer;
+                    
+                    // Color Grading: Deep Sea / Nebula
+                    vec3 colorHigh = vec3(0.5, 0.9, 1.0); // Cyan/White
+                    vec3 colorLow = vec3(0.0, 0.1, 0.6);  // Deep Blue
+                    
+                    vec3 finalColor = mix(colorHigh, colorLow, dist);
+                    
+                    // Boost Alpha for visibility
+                    float alpha = brightness * 0.5; 
+                    
+                    gl_FragColor = vec4(finalColor, alpha);
+                }
+            `;
+
+            // Calculate size to cover background
+            // Use a large fixed size or dynamic logic. 
+            // Since camera is at z=1800, and plane at z=-200, it needs to be huge.
+            // FOV 75 deg. 
+
+            const geometry = new THREE.PlaneGeometry(10000, 10000);
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: godRaysUniforms,
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.z = -200;
+            // mesh.position.y = 500; // Move up slightly
+            scene.add(mesh);
+            console.log("God Rays initialized", mesh);
         }
 
         // --- Text System ---
@@ -371,34 +522,45 @@
             const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
             for (let i = 0; i < CONFIG.particleCount; i++) {
-                // Fibonacci Sphere Distribution
-                const yNorm = 1 - (i / (CONFIG.particleCount - 1)) * 2; // -1 to 1
-                const radius = Math.sqrt(1 - yNorm * yNorm);
 
-                const theta = goldenAngle * i;
+                // Irregular Random Sphere Distribution
+                // Using spherical coordinates with random uniform distribution
+                // theta = azimuthal angle [0, 2*PI]
+                // phi = polar angle [0, PI] (Approximate via acos for uniform dist)
 
-                // Radius with slight volume variation (Shell-like but with depth)
-                const r = 900 + Math.random() * 400;
+                const u = Math.random();
+                const v = Math.random();
 
-                const ox = Math.cos(theta) * radius * r;
-                const oy = yNorm * r;
-                const oz = Math.sin(theta) * radius * r;
+                const theta = 2 * Math.PI * u;
+                const phi = Math.acos(2 * v - 1);
 
-                // Initial position: Start ON the sphere (Boiling planet)
+                // Keep the fixed radius constraint for the sphere "surface"
+                const r = 1100;
+
+                const ox = r * Math.sin(phi) * Math.cos(theta);
+                const oy = r * Math.sin(phi) * Math.sin(theta);
+                const oz = r * Math.cos(phi);
+
+                // Initial position
                 positions[i * 3] = ox;
                 positions[i * 3 + 1] = oy;
                 positions[i * 3 + 2] = oz;
 
-                sizes[i] = CONFIG.particleSize * (0.8 + Math.random() * 1.5); // Varying sizes
+                sizes[i] = CONFIG.particleSize * (0.8 + Math.random() * 1.5);
 
                 colors[i * 3] = colorObj.r;
                 colors[i * 3 + 1] = colorObj.g;
                 colors[i * 3 + 2] = colorObj.b;
 
+                // Store individual random motion parameters
                 particleData.push({
                     vx: 0, vy: 0, vz: 0,
                     ox: ox, oy: oy, oz: oz,
                     tx: null, ty: null, tz: null,
+                    // Phase offset for breathing/jumping
+                    phase: Math.random() * Math.PI * 2,
+                    // Speed multiplier for this particle
+                    speed: 0.5 + Math.random() * 1.5
                 });
             }
 
@@ -472,20 +634,19 @@
                 currentMode = 0;
             }
 
+            // SIMPLIFIED: Left Hand 5 Fingers = Final "Thank You" Mode directly
+            // Removed right hand dependency (isRightHandOpen) for mode 5
+            isUltMode = (currentMode === 5);
+
             if (isUltMode) {
                 targetColorHex = CONFIG.colors.five;
-                document.getElementById('left-status').innerText = 'LINKED';
-                document.getElementById('right-status').innerText = 'SYNC';
+                document.getElementById('left-status').innerText = 'THANK YOU';
+                document.getElementById('right-status').innerText = '';
                 document.getElementById('left-status').style.color = '#FF8800';
             } else {
                 if (HandState.left.active) {
                     const fingers = HandState.left.fingers;
-                    if (currentMode === 5) {
-                        targetColorHex = CONFIG.colors.five;
-                        document.getElementById('left-status').innerText = 'CATCH MODE';
-                        document.getElementById('left-status').style.color = '#FF8800';
-                    } else if (currentMode > 0) {
-                        // ... existing text mode logic ...
+                    if (currentMode > 0) {
                         const modes = ['PLANNER', 'PRODUCER', 'EXECUTIVE', 'SPEAKERS'];
                         const keys = ['one', 'two', 'three', 'four'];
                         // Fix for modes > 4 if sensitivity causes jump
@@ -494,12 +655,10 @@
                         document.getElementById('left-status').innerText = modes[idx];
                         document.getElementById('left-status').style.color = '#' + new THREE.Color(targetColorHex).getHexString();
                     } else {
-                        // ...
                         document.getElementById('left-status').innerText = 'STANDBY';
                         document.getElementById('left-status').style.color = '#0ff';
                     }
                 } else {
-                    // ...
                     document.getElementById('left-status').innerText = 'NO SIGNAL';
                     document.getElementById('left-status').style.color = '#555';
                 }
@@ -515,7 +674,25 @@
                 }
             }
 
-            isUltMode = (currentMode === 5 && isRightHandOpen);
+            // Flash Trigger Logic
+            // If entering a text mode (1-4) or Ultimate Text Mode
+            // Trigger a BRIGHT flash
+            if (currentMode >= 1 && currentMode <= 4) {
+                if (currentMode !== lastMode) {
+                    flashValue = 20.0; // TRIGGERNUKE: Extreme brightness for visibility test
+                }
+            } else if (isUltMode) {
+                // Check if we just entered Ult Mode
+                if (!wasUltMode) {
+                    flashValue = 20.0; // Extreme brightness
+                }
+            }
+
+            wasUltMode = isUltMode;
+            lastMode = currentMode;
+            flashValue *= 0.9; // Slow decay
+            if (flashValue < 0.01) flashValue = 0;
+
             updateParticles(targetColorHex);
         }
 
@@ -572,9 +749,22 @@
                 let tz = p.oz;
 
                 // Color Morph - Optimized
+                // We mix the target color with the flash intensity
+                // If flashValue > 0, we add white to the color
+
+                // Base interpolation
                 colors[i3] += (trR - colors[i3]) * 0.1;
                 colors[i3 + 1] += (trG - colors[i3 + 1]) * 0.1;
                 colors[i3 + 2] += (trB - colors[i3 + 2]) * 0.1;
+
+                // Additive Flash
+                // FORCE OVERWRITE for visibility
+                if (flashValue > 0.1) {
+                    const boost = flashValue;
+                    colors[i3] = Math.min(1.0, colors[i3] + boost);
+                    colors[i3 + 1] = Math.min(1.0, colors[i3 + 1] + boost);
+                    colors[i3 + 2] = Math.min(1.0, colors[i3 + 2] + boost);
+                }
 
                 // Black Lines Texture in Ult Mode
                 if (isUltMode && i % 30 < 5) {
@@ -618,15 +808,26 @@
                     tx = p.ox * 2;
                     ty = p.oy * 2;
                 } else {
-                    // Idle State (Boiling Planet) 
-                    // Use pre-calculated rotation
-                    const ox = p.ox * cosRot - p.oz * sinRot;
-                    const oz = p.ox * sinRot + p.oz * cosRot;
+                    // Idle State (Irregular Jumping Surface)
+                    // Regular rotation base
+                    const baseX = p.ox * cosRot - p.oz * sinRot;
+                    const baseZ = p.ox * sinRot + p.oz * cosRot;
 
-                    const noise = Math.sin(time * 3 + i * 0.1) * 30; // Stronger boil
-                    tx = ox + noise;
-                    ty = p.oy + noise;
-                    tz = oz + noise;
+                    // Add chaotic perpendicular jumping noise
+                    // By extending the vector from center (0,0,0) outwards
+
+                    // Jumping intensity
+                    const jump = Math.sin(time * p.speed + p.phase) * 60; // +/- 60 units jump
+
+                    // Direction vector (normalized ox, oy, oz approx) since r=1100
+                    const nX = p.ox / 1100; // normalized
+                    const nY = p.oy / 1100;
+                    const nZ = p.oz / 1100;
+
+                    // Apply jump along normal vector
+                    tx = baseX + nX * jump;
+                    ty = p.oy + nY * jump;
+                    tz = baseZ + nZ * jump;
                 }
 
                 // Physics
@@ -692,6 +893,8 @@
 
         function animate() {
             requestAnimationFrame(animate);
+            // Update shader time for swaying effect
+            godRaysUniforms.uTime.value += 0.005;
             updateLogic();
             updateFPS();
             renderer.render(scene, camera);
@@ -715,7 +918,8 @@
                     const scale = Math.hypot(landmarks[5].x - landmarks[0].x, landmarks[5].y - landmarks[0].y);
                     const thumbDist = Math.hypot(landmarks[4].x - landmarks[17].x, landmarks[4].y - landmarks[17].y);
 
-                    if (thumbDist > scale * 1.5) fingers++;
+                    // Relaxed threshold: 1.5 -> 1.0 (Easier to trigger)
+                    if (thumbDist > scale * 1.0) fingers++;
 
                     // 2. Four Fingers Logic (Index, Middle, Ring, Pinky)
                     // Check if Tip is further from Wrist than PIP
