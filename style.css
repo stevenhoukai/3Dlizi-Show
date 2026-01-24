@@ -262,7 +262,7 @@ html {
 
 .intro-subtitle {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 1.5rem;
+    font-size: 2.0rem;
 
     /* Metal Style */
     background: linear-gradient(to bottom, #cfc7f8 0%, #ebb52d 100%);
@@ -991,9 +991,12 @@ input[type="color"] {
    t o p :   2 5 p x ; 
    r i g h t :   2 2 0 p x ;   / *   L e f t   o f   B G M   b u t t o n   ( 8 0   +   1 2 0   +   2 0 )   * / 
    c o l o r :   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 7 ) ; 
-   f o n t - f a m i l y :    
- S h a r e  
- T e c h  
+   f o n t - f a m i l y :   
+ 
+ S h a r e 
+ 
+ T e c h 
+ 
  M o n o ,   m o n o s p a c e ; 
    f o n t - s i z e :   1 4 p x ; 
    l e t t e r - s p a c i n g :   2 p x ; 
@@ -1036,5 +1039,6 @@ input[type="color"] {
    b o x - s h a d o w :   0   0   1 5 p x   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 3 ) ; 
    t e x t - s h a d o w :   0   0   5 p x   r g b a ( 0 ,   2 5 5 ,   2 5 5 ,   0 . 8 ) ; 
  } 
-  
+ 
+ 
  

@@ -1032,11 +1032,12 @@ function initParticles() {
 
     // List of targets to generate
     const targets = [
-        { name: 'Stephen Monkey', url: 'http://ssg-inner-aishow.seasungames.cn:3000/ssg_show_hk/01/index.html' },
-        { name: 'LEON ZHANG', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_zzy/01/index.html' },
-        { name: 'DGDTS DU', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_djy/01/index.html' },
-        { name: 'Allen', url: '#' },
-        { name: 'Chengguang', url: '#' }
+        { name: 'Stephen Hou', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_hk/01/index.html' },
+        { name: 'LEON Zhang', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_zzy/01/index.html' },
+        { name: 'DGDTS Du', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_djy/01/index.html' },
+        { name: 'Allen She', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_sal/01/index.html' },
+        { name: 'ChengG Hu', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_hcg/index.html' },
+        { name: 'Ending', url: 'https://ssg-inner-aishow.seasungame.com/ending.html' }
     ];
 
     const container = document.getElementById('tech-labels-container');
@@ -1051,31 +1052,21 @@ function initParticles() {
     });
 
     targets.forEach((target, index) => {
-        // 使用 Fibonacci Sphere 分布来防止位置重叠
-        // 索引加个偏移量防止每次都在同一点
-        const k = index + 0.5;
-        const total = targets.length;
-        const phi = Math.acos(1 - 2 * k / total); // 0 到 PI
-        const theta = Math.PI * (1 + Math.sqrt(5)) * k; // 黄金角
+        // Random starting position near center (within radius 0.5)
+        // Use cubic root to distribute evenly in volume, but emphasizing center
+        const r = 0.5 * Math.cbrt(Math.random()); 
+        const theta = Math.random() * 2 * Math.PI;
+        const phi = Math.acos(2 * Math.random() - 1);
+        
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.sin(phi) * Math.sin(theta);
+        const z = r * Math.cos(phi);
 
-        // 随机半径，保持在土星球体内部 (Radius ~1.0)
-        // 0.4 ~ 0.8 范围，避免太靠近核心也避免溢出
-        const r = 0.4 + Math.random() * 0.4;
-
-        let x = r * Math.sin(phi) * Math.cos(theta);
-        let y = r * Math.sin(phi) * Math.sin(theta);
-        let z = r * Math.cos(phi);
-
-        // 第一个是史蒂芬猴，强制稍微居中一点但不要完全在正中心
-        if (index === 0) {
-            x *= 0.2; y *= 0.2; z *= 0.2;
-        }
-
-        const basePos = new THREE.Vector3(x, y, z);
+        const localPos = new THREE.Vector3(x, y, z);
 
         // 创建 Sprite
         const sprite = new THREE.Sprite(specialMaterial.clone());
-        sprite.position.copy(basePos);
+        sprite.position.copy(localPos);
         sprite.scale.set(0.15, 0.15, 0.15); // Default small size
         sprite.visible = false;
         scene.add(sprite);
@@ -1132,8 +1123,14 @@ function initParticles() {
 
         container.appendChild(div);
 
+        // Initialize with very slow velocity for "slow wandering"
         specialParticles.push({
-            basePos: basePos,
+            localPos: localPos,
+            velocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 0.0005, 
+                (Math.random() - 0.5) * 0.0005, 
+                (Math.random() - 0.5) * 0.0005
+            ),
             particle: sprite,
             element: div,
             url: target.url
@@ -1419,27 +1416,15 @@ function initEvents() {
     }
 
     // Global BGM Toggle
+    // Handled in initIntro to prevent double-toggle conflict
+    /*
     const bgmBtn = document.getElementById('global-bgm-btn');
     if (bgmBtn) {
         bgmBtn.addEventListener('click', () => {
-            // Find global audio, usually ID 'bgm-player' or dynamically created
-            const audio = document.getElementById('global-bgm-audio');
-            // If not found, try generic search
-            const targetAudio = audio || document.querySelector('audio');
-
-            if (targetAudio) {
-                if (targetAudio.paused) {
-                    targetAudio.play();
-                    bgmBtn.textContent = "🎵 MUSIC: ON";
-                    bgmBtn.classList.remove('off');
-                } else {
-                    targetAudio.pause();
-                    bgmBtn.textContent = "🎵 MUSIC: OFF";
-                    bgmBtn.classList.add('off');
-                }
-            }
+            // ...
         });
     }
+    */
 
     // Scale Slider
     const scaleSlider = document.getElementById('scale-slider');
@@ -1952,10 +1937,49 @@ function animate() {
             // Boost opacity so they are definitely seen
             sprite.material.opacity = visibility * 1.0;
 
-            // 1. Update Position first (so raycast/proximity checks are accurate)
-            const worldPos = sp.basePos.clone();
+            // === 1. Wandering & Flocking Logic (New) ===
+            // Forces
+            // A. Restoring Force (Pull to center 0,0,0) - Weak
+            const centerPush = sp.localPos.clone().negate().multiplyScalar(0.0002);
+            sp.velocity.add(centerPush);
+
+            // B. Separation (Prevent overlap)
+            specialParticles.forEach((otherSp, otherIdx) => {
+                if (index === otherIdx) return;
+                const diff = sp.localPos.clone().sub(otherSp.localPos);
+                const dist = diff.length();
+                if (dist < 0.6) { // Minimum comfortable distance
+                    // Stronger repulsion when closer
+                    const force = diff.normalize().multiplyScalar(0.0005 / (dist * dist + 0.01));
+                    sp.velocity.add(force);
+                }
+            });
+
+            // C. Random Wander (Brownian-ish) - Even Slower
+            sp.velocity.x += (Math.random() - 0.5) * 0.00005;
+            sp.velocity.y += (Math.random() - 0.5) * 0.00005;
+            sp.velocity.z += (Math.random() - 0.5) * 0.00005;
+
+            // D. Damping & Limit
+            sp.velocity.multiplyScalar(0.98); // Drag
+            const maxSpeed = 0.0008; // Very slow drift
+            sp.velocity.clampLength(0, maxSpeed);
+
+            // Apply Velocity
+            sp.localPos.add(sp.velocity);
+
+            // Bounds Check (Soft container)
+            // If too far, nudge back hard
+            if (sp.localPos.length() > 1.2) {
+                sp.velocity.add(sp.localPos.clone().negate().multiplyScalar(0.01));
+            }
+
+            // === 2. Calculate World Position ===
+            const worldPos = sp.localPos.clone();
+            // Rotate with the system to feel "inside" gravity, but wander locally
             worldPos.applyEuler(particles.rotation);
             worldPos.multiplyScalar(state.currentScale);
+            
             sprite.position.copy(worldPos);
 
             // 2. Project to Screen/NDC Space
