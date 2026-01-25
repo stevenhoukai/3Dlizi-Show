@@ -329,23 +329,17 @@ function startStarWarp(overlay) {
         ctx.fillRect(0, 0, width, height);
 
         // Update Camera Position (Parallax)
-        // Hand Control Overlay
-        if (state.isRightHandDetected) {
+        // Hand Control Overlay (UPDATED: Left Hand Interaction as requested)
+        if (state.isLeftHandDetected && state.leftHandPosition) {
             // Map NDC (-1..1) to Screen Coords (0..width)
-            // Note: mouse.y in state is inverted by MediaPipe logic? 
-            // In initMediaPipe: mouse.y = -(handY * 2) + 1; (Maps 0..1 to 1..-1)
-            // Here we want 0..height.
-            // 1 -> 0, -1 -> height implies: (1 - y) / 2 * height ? No.
-            // Let's reverse: mouse.y is 1 (top) to -1 (bottom)
-            // We want y=0 (top) to y=height (bottom)
-            // normalizedTop = (1 - mouse.y) / 2
-            mouseX = (mouse.x * 0.5 + 0.5) * width;
-            mouseY = (1 - mouse.y) * 0.5 * height;
+            // We use state.leftHandPosition which matches the mouse logic
+
+            mouseX = (state.leftHandPosition.x * 0.5 + 0.5) * width;
+            mouseY = (1 - state.leftHandPosition.y) * 0.5 * height;
 
             // Acceleration Control (Open Hand)
-            // state.rightHandOpenness: 0 (Fist/Flat) -> 1 (Spread)
-            // Gesture logic is now pre-processed in initMediaPipe
-            if (state.rightHandOpenness > 0.5) {
+            // state.leftHandOpenness: 0 (Fist) -> 1 (Spread)
+            if (state.leftHandOpenness > 0.5) {
                 if (!isAccelerating) {
                     isAccelerating = true;
                     // Only reset start time if we were fully stopped/idle to prevent jitter
@@ -1032,11 +1026,11 @@ function initParticles() {
 
     // List of targets to generate
     const targets = [
-        { name: 'Stephen Hou', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_hk/01/index.html' },
-        { name: 'LEON Zhang', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_zzy/01/index.html' },
-        { name: 'DGDTS Du', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_djy/01/index.html' },
-        { name: 'Allen She', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_sal/01/index.html' },
-        { name: 'ChengG Hu', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_hcg/index.html' },
+        { name: '《MUSA开发者大会》--StephenK', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_hk/01/index.html' },
+        { name: '《探索 AI Agent 的开发范式》--LEONZ', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_zzy/01/index.html' },
+        { name: '《Code Review AIAgent 实践总结》--DGDts', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_djy/01/index.html' },
+        { name: '《AIGC 视频自动化生产线》--HCG', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_sal/01/index.html' },
+        { name: '《AI 能力中台实践》-- Allen', url: 'https://ssg-inner-aishow.seasungame.com/ssg_show_hcg/index.html' },
         { name: 'Ending', url: 'https://ssg-inner-aishow.seasungame.com/ending.html' }
     ];
 
@@ -1054,10 +1048,10 @@ function initParticles() {
     targets.forEach((target, index) => {
         // Random starting position near center (within radius 0.5)
         // Use cubic root to distribute evenly in volume, but emphasizing center
-        const r = 0.5 * Math.cbrt(Math.random()); 
+        const r = 0.5 * Math.cbrt(Math.random());
         const theta = Math.random() * 2 * Math.PI;
         const phi = Math.acos(2 * Math.random() - 1);
-        
+
         const x = r * Math.sin(phi) * Math.cos(theta);
         const y = r * Math.sin(phi) * Math.sin(theta);
         const z = r * Math.cos(phi);
@@ -1127,8 +1121,8 @@ function initParticles() {
         specialParticles.push({
             localPos: localPos,
             velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 0.0005, 
-                (Math.random() - 0.5) * 0.0005, 
+                (Math.random() - 0.5) * 0.0005,
+                (Math.random() - 0.5) * 0.0005,
                 (Math.random() - 0.5) * 0.0005
             ),
             particle: sprite,
@@ -1521,6 +1515,7 @@ function initMediaPipe() {
 
             let leftHandFound = false;
             state.isRightHandDetected = false;
+            state.isLeftHandDetected = false;
             state.selectedLabelIndex = -1; // Reset selection unless right hand confirms it
 
             // Loop through all hands
@@ -1593,11 +1588,24 @@ function initMediaPipe() {
                 if (label === 'Right') {
                     leftHandFound = true; // Maps to "Scale Hand" state
 
+                    // Store Left Hand State for Shuttle Interaction (requested by user)
+                    state.isLeftHandDetected = true;
+
+                    // Pointer / Cursor Position (Index Tip 8) for Steering
+                    const pointer = landmarks[8];
+                    // Same coordinate mapping as the other hand
+                    state.leftHandPosition = {
+                        x: -((pointer.x * 2) - 1),
+                        y: -(pointer.y * 2) + 1
+                    };
+
                     // Tuned for easier Max reach (1.8 -> 1.5)
                     const minOpen = 0.8;
                     const maxOpen = 1.5;
                     let openness = (extensionRatio - minOpen) / (maxOpen - minOpen);
                     openness = Math.max(0, Math.min(openness, 1));
+
+                    state.leftHandOpenness = openness;
 
                     // Expanded Max Scale to 6.0 for impactful expansion
                     state.handScale = 0.1 + openness * 5.9;
@@ -1979,7 +1987,7 @@ function animate() {
             // Rotate with the system to feel "inside" gravity, but wander locally
             worldPos.applyEuler(particles.rotation);
             worldPos.multiplyScalar(state.currentScale);
-            
+
             sprite.position.copy(worldPos);
 
             // 2. Project to Screen/NDC Space
